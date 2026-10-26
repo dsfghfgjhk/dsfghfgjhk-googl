@@ -80,6 +80,31 @@
     <span id="toast-message">알림 메시지</span>
   </div>
 
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 space-y-4" role="dialog" aria-labelledby="settings-title">
+      <div class="flex items-center justify-between">
+        <h2 id="settings-title" class="text-lg font-bold text-gray-900">검색 설정</h2>
+        <button onclick="closeSettings()" class="p-1.5 text-gray-400 hover:text-gray-700 rounded-full" aria-label="닫기"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <p id="settings-claude-note" class="hidden text-xs text-gray-500 bg-gray-50 rounded-xl p-3">지금은 Claude 안에서 열려 있어서 키 없이도 검색됩니다. 아래 키는 GitHub Pages 같은 다른 곳에서 열 때 쓰입니다.</p>
+      <div class="space-y-1.5">
+        <label for="api-key" class="text-sm font-semibold text-gray-800">Gemini API 키</label>
+        <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="AIza로 시작하는 키" class="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:outline-none focus:border-googl-blue text-sm font-mono" onkeydown="if(event.key==='Enter') saveSettings()">
+        <p id="settings-status" class="text-xs text-googl-green"></p>
+      </div>
+      <div class="text-xs text-gray-500 leading-relaxed space-y-1">
+        <p>Google AI Studio에서 무료로 발급받을 수 있습니다: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="text-googl-blue underline">aistudio.google.com/apikey</a></p>
+        <p>키는 이 브라우저에만 저장되고 다른 곳으로 보내지지 않습니다.</p>
+      </div>
+      <div class="flex justify-end gap-2 pt-1">
+        <button onclick="deleteKey()" class="px-4 py-2 rounded-full text-sm font-semibold text-gray-600 hover:bg-gray-100">키 지우기</button>
+        <button onclick="saveSettings()" class="px-5 py-2 rounded-full text-sm font-semibold bg-googl-blue text-white hover:opacity-90">저장</button>
+      </div>
+    </div>
+  </div>
+
   <!-- APP WRAPPER -->
   <div id="app" class="flex-1 flex flex-col">
 
@@ -96,6 +121,9 @@
         <div class="flex items-center space-x-5 text-sm font-medium text-gray-700">
           <button onclick="quickCategorySearch('뉴스')" class="hover:underline text-gray-600">뉴스</button>
           <button onclick="quickCategorySearch('학술')" class="hover:underline text-gray-600">학술</button>
+          <button onclick="openSettings()" class="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition" title="설정" aria-label="설정">
+            <i class="fa-solid fa-gear text-lg"></i>
+          </button>
           <!-- Grid Icon -->
           <button class="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition" title="앱 목록">
             <i class="fa-solid fa-grip text-lg"></i>
@@ -218,7 +246,7 @@
           <div class="flex space-x-6">
             <button onclick="showToast('서비스 약관 및 정보')" class="hover:underline">개인정보처리방침</button>
             <button onclick="showToast('약관 정보')" class="hover:underline">약관</button>
-            <button onclick="showToast('검색 설정')" class="hover:underline">설정</button>
+            <button onclick="openSettings()" class="hover:underline">설정</button>
           </div>
           <div>
             <span>© 2026 GOOGL Inc. All rights reserved.</span>
@@ -265,7 +293,7 @@
 
           <!-- Top Right User Profile -->
           <div class="flex items-center space-x-3">
-            <button class="p-2 text-gray-600 hover:bg-gray-100 rounded-full">
+            <button onclick="openSettings()" class="p-2 text-gray-600 hover:bg-gray-100 rounded-full" aria-label="설정">
               <i class="fa-solid fa-gear text-lg"></i>
             </button>
             <button class="w-8 h-8 rounded-full bg-googl-blue text-white font-bold flex items-center justify-center text-sm shadow">
@@ -463,9 +491,117 @@
       ? window.claude.use('sample').catch(() => null)
       : Promise.resolve(null);
     let aiBlocked = false; // 사용 거부 등으로 이번 화면에서 AI를 못 쓰는 경우
+    // ===== 검색 엔진(AI) 공급자 =====
+    // Claude 아티팩트 안: Claude 사용 / 그 밖(GitHub Pages 등): 설정에 저장한 Gemini API 키 사용
+    const KEY_STORE = 'googl_gemini_key';
+    const MODEL_STORE = 'googl_gemini_model';
+    function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch { return ''; } }
+    function lsSet(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch {} }
+
+    const GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-flash-lite-latest', 'gemini-3-flash-preview', 'gemini-flash-latest'];
+    const geminiCache = new Map();
+
+    async function geminiSample(input, opts = {}) {
+      const { signal, onText } = opts;
+      const prompt = typeof input === 'string' ? input : input.map(m => m.content).join('\n\n');
+      if (geminiCache.has(prompt)) {
+        const t = geminiCache.get(prompt);
+        onText?.({ text: t, delta: t });
+        return { text: t, truncated: false };
+      }
+      const key = lsGet(KEY_STORE);
+      if (!key) throw { code: 'no_key' };
+      const saved = lsGet(MODEL_STORE);
+      const models = saved ? [saved, ...GEMINI_MODELS.filter(m => m !== saved)] : GEMINI_MODELS;
+      let lastErr = { code: 'upstream_error' };
+
+      for (const model of models) {
+        let res;
+        try {
+          res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.8, maxOutputTokens: 4096 }
+            }),
+            signal
+          });
+        } catch (e) {
+          if (signal?.aborted) throw { code: 'cancelled' };
+          throw { code: 'upstream_error', message: String(e) };
+        }
+        if (!res.ok) {
+          const body = await res.text().catch(() => '');
+          if (res.status === 404 || (res.status === 400 && /not found|not supported|unknown model/i.test(body))) { lastErr = { code: 'upstream_error', message: body }; continue; }
+          if (res.status === 400 && /api key|API_KEY/i.test(body)) throw { code: 'bad_key' };
+          if (res.status === 401 || res.status === 403) throw { code: 'bad_key' };
+          if (res.status === 429) throw { code: 'rate_limited' };
+          throw { code: 'upstream_error', message: body };
+        }
+        lsSet(MODEL_STORE, model);
+
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+        let buf = '', text = '', finish = '';
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += dec.decode(value, { stream: true });
+            let nl;
+            while ((nl = buf.indexOf('\n')) >= 0) {
+              const line = buf.slice(0, nl).trim();
+              buf = buf.slice(nl + 1);
+              if (!line.startsWith('data:')) continue;
+              let j; try { j = JSON.parse(line.slice(5)); } catch { continue; }
+              const c = j.candidates?.[0];
+              if (c?.finishReason) finish = c.finishReason;
+              const delta = (c?.content?.parts || []).filter(p => !p.thought).map(p => p.text || '').join('');
+              if (delta) { text += delta; onText?.({ text, delta }); }
+            }
+          }
+        } catch (e) {
+          if (signal?.aborted) throw { code: 'cancelled', text };
+          throw { code: 'upstream_error', text };
+        }
+        if (!text) throw { code: /SAFETY|BLOCK/.test(finish) ? 'refused' : 'empty_completion' };
+        geminiCache.set(prompt, text);
+        return { text, truncated: finish === 'MAX_TOKENS' };
+      }
+      throw lastErr;
+    }
+
+    let inClaude = false;
     async function getSample() {
-      if (aiBlocked) return null;
-      try { return await samplePromise; } catch { return null; }
+      if (!aiBlocked) {
+        try { const s = await samplePromise; if (s) { inClaude = true; return s; } } catch {}
+      }
+      return lsGet(KEY_STORE) ? geminiSample : null;
+    }
+
+    // ===== 설정 창 =====
+    function openSettings() {
+      const m = document.getElementById('settings-modal');
+      document.getElementById('api-key').value = lsGet(KEY_STORE);
+      document.getElementById('settings-status').textContent = lsGet(KEY_STORE) ? '키가 저장되어 있습니다.' : '';
+      document.getElementById('settings-claude-note').classList.toggle('hidden', !inClaude);
+      m.classList.remove('hidden');
+      setTimeout(() => document.getElementById('api-key').focus(), 50);
+    }
+    function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
+    function saveSettings() {
+      const v = document.getElementById('api-key').value.trim();
+      lsSet(KEY_STORE, v);
+      lsSet(MODEL_STORE, '');
+      geminiCache.clear();
+      closeSettings();
+      showToast(v ? '저장했습니다.' : '키를 지웠습니다.');
+      if (v && state.currentView === 'results' && state.currentQuery) startSearch();
+    }
+    function deleteKey() {
+      document.getElementById('api-key').value = '';
+      saveSettings();
     }
 
 
@@ -792,16 +928,16 @@
       if (b) executePresetSearch(b.dataset.q);
     });
 
-    function showSearchError(msg) {
+    function showSearchError(msg, needKey) {
       document.getElementById('featured-card').classList.add('hidden');
       document.getElementById('knowledge-card').classList.add('hidden');
       document.getElementById('search-stats').textContent = '';
       document.getElementById('results-list').innerHTML = `
         <div class="py-6 text-sm text-gray-700 space-y-3">
           <p>${esc(msg)}</p>
-          <button id="search-retry" class="px-4 py-2 rounded-full border border-gray-300 text-googl-blue font-semibold hover:bg-blue-50">다시 시도</button>
+          <button id="search-retry" class="px-4 py-2 rounded-full border border-gray-300 text-googl-blue font-semibold hover:bg-blue-50">${needKey ? '설정 열기' : '다시 시도'}</button>
         </div>`;
-      document.getElementById('search-retry').onclick = () => startSearch();
+      document.getElementById('search-retry').onclick = () => needKey ? openSettings() : startSearch();
     }
 
     async function startSearch() {
@@ -819,7 +955,7 @@
 
       const sample = await getSample();
       if (seq !== state.searchSeq) return;
-      if (!sample) { showSearchError('검색 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.'); return; }
+      if (!sample) { showSearchError('검색을 사용하려면 설정에서 검색 API 키를 등록해 주세요.', true); return; }
 
       let pos = 0;
       const consume = (text) => {
@@ -853,6 +989,7 @@
       }
       if (seq !== state.searchSeq) return;
       if (!state.currentData.results.length) {
+        if (errCode === 'bad_key' || errCode === 'no_key') { showSearchError('API 키가 올바르지 않습니다. 설정에서 키를 확인해 주세요.', true); return; }
         showSearchError(
           aiBlocked ? '검색 서비스를 사용할 수 없습니다. 페이지를 새로고침한 뒤 허용을 눌러 주세요.'
           : errCode === 'rate_limited' ? '요청이 너무 많습니다. 잠시 후 다시 검색해 주세요.'
@@ -1033,7 +1170,7 @@
           return;
         }
         const partial = e?.code === 'refused' ? '' : (e?.text || '');
-        const msg = e?.code === 'rate_limited' ? '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' : '페이지를 불러오지 못했습니다.';
+        const msg = e?.code === 'rate_limited' ? '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' : e?.code === 'bad_key' ? 'API 키가 올바르지 않습니다. 설정에서 확인해 주세요.' : '페이지를 불러오지 못했습니다.';
         bodyEl.innerHTML = (partial ? renderArticleText(partial) : '') + `
           <div class="mt-4 p-4 rounded-xl bg-red-50 text-red-700 text-sm flex items-center justify-between gap-3">
             <span>${msg}</span>
@@ -1084,6 +1221,9 @@
         toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
       }, 3000);
     }
+
+    document.getElementById('settings-modal').addEventListener('click', (e) => { if (e.target.id === 'settings-modal') closeSettings(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSettings(); });
 
     function handleNavClick(name) {
       if (name === 'about') showToast('GOOGL은 차세대 지능형 웹 검색엔진 프로젝트입니다.');
