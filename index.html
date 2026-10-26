@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+  <title>GOOGL 검색</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <!-- Font Awesome CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+  <!-- Google Fonts Inter & Noto Sans KR -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans KR', 'sans-serif'],
+          },
+          colors: {
+            googl: {
+              blue: '#4285F4',
+              red: '#EA4335',
+              yellow: '#FBBC05',
+              green: '#34A853',
+              dark: '#202124',
+              gray: '#70757a',
+              bgLight: '#f8f9fa',
+              border: '#dfe1e5',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    html, body {
+      font-family: 'Inter', 'Noto Sans KR', sans-serif;
+      background-color: #ffffff;
+      color: #202124;
+      -webkit-font-smoothing: antialiased;
+    }
+    .custom-shadow {
+      box-shadow: 0 1px 6px rgba(32,33,36,0.18);
+    }
+    .hover-shadow:hover {
+      box-shadow: 0 2px 8px rgba(32,33,36,0.22);
+    }
+    /* Hide scrollbar for category tabs overflow */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .line-clamp-3 {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  </style>
+<div class="min-h-screen flex flex-col bg-white text-gray-800">
+
+  <!-- Toast Message Box (Replaces alert) -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl transition-all duration-300 opacity-0 pointer-events-none transform translate-y-4 z-50 flex items-center space-x-3">
+    <i class="fa-solid fa-circle-info text-googl-blue"></i>
+    <span id="toast-message">알림 메시지</span>
+  </div>
+
+  <!-- APP WRAPPER -->
+  <div id="app" class="flex-1 flex flex-col">
+
+    <!-- ========================================== -->
+    <!-- 1. HOME VIEW                              -->
+    <!-- ========================================== -->
+    <div id="view-home" class="flex-1 flex flex-col">
+      <!-- Home Navigation Header -->
+      <header class="w-full flex justify-between items-center px-6 py-4">
+        <div class="flex items-center space-x-4 text-sm font-medium text-gray-600">
+          <button onclick="handleNavClick('about')" class="hover:underline">GOOGL 정보</button>
+          <button onclick="handleNavClick('store')" class="hover:underline">스토어</button>
+        </div>
+        <div class="flex items-center space-x-5 text-sm font-medium text-gray-700">
+          <button onclick="quickCategorySearch('뉴스')" class="hover:underline text-gray-600">뉴스</button>
+          <button onclick="quickCategorySearch('학술')" class="hover:underline text-gray-600">학술</button>
+          <!-- Grid Icon -->
+          <button class="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition" title="앱 목록">
+            <i class="fa-solid fa-grip text-lg"></i>
+          </button>
+          <!-- Profile Button -->
+          <button class="w-9 h-9 rounded-full bg-googl-blue text-white font-bold flex items-center justify-center shadow hover:opacity-90 transition">
+            G
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Home Content -->
+      <main class="flex-1 flex flex-col items-center justify-center px-4 max-w-4xl mx-auto w-full -mt-12">
+        <!-- Brand Logo -->
+        <div class="mb-8 text-center select-none cursor-pointer" onclick="goHome()">
+          <span class="text-6xl sm:text-7xl font-bold tracking-tight text-googl-blue">G</span>
+          <span class="text-6xl sm:text-7xl font-bold tracking-tight text-googl-red">O</span>
+          <span class="text-6xl sm:text-7xl font-bold tracking-tight text-googl-yellow">O</span>
+          <span class="text-6xl sm:text-7xl font-bold tracking-tight text-googl-blue">G</span>
+          <span class="text-6xl sm:text-7xl font-bold tracking-tight text-googl-green">L</span>
+        </div>
+
+        <!-- Search Form Component -->
+        <div class="w-full max-w-2xl relative mb-8">
+          <div class="relative flex items-center border border-gray-200 rounded-full hover-shadow custom-shadow bg-white transition duration-200 focus-within:shadow-md focus-within:border-gray-300">
+            <div class="pl-5 text-gray-400">
+              <i class="fa-solid fa-magnifying-glass text-lg"></i>
+            </div>
+            <input 
+              type="text" 
+              id="home-search-input" 
+              class="w-full py-3.5 pl-3 pr-20 text-base rounded-full focus:outline-none bg-transparent text-gray-800 placeholder-gray-400"
+              placeholder="GOOGL에서 검색 또는 URL 입력"
+              autocomplete="off"
+              onkeydown="if(event.key === 'Enter') submitSearch('home')"
+              onfocus="showHistoryDropdown('home')"
+            >
+            <div class="absolute right-3 flex items-center space-x-2">
+              <button id="home-clear-btn" onclick="clearInput('home')" class="hidden p-1.5 text-gray-400 hover:text-gray-600 rounded-full">
+                <i class="fa-solid fa-xmark text-lg"></i>
+              </button>
+              <button onclick="simulateVoiceSearch()" class="p-2 text-googl-blue hover:bg-gray-50 rounded-full transition" title="음성 검색">
+                <i class="fa-solid fa-microphone text-lg"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- History / Auto-suggestions Dropdown -->
+          <div id="home-history-dropdown" class="hidden absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 py-3 z-30">
+            <div class="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">최근 검색어</div>
+            <div id="home-history-list" class="divide-y divide-gray-50">
+              <!-- JS Populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Recommendation Cards & Direct Query Hints -->
+        <div class="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 gap-3 mb-10">
+          <div onclick="executePresetSearch('2026년 인공지능 기술 트렌드')" class="p-4 border border-gray-200 rounded-2xl bg-white hover:border-blue-300 hover:bg-blue-50/40 transition cursor-pointer flex items-start space-x-3">
+            <div class="p-2.5 bg-blue-100 text-googl-blue rounded-xl flex-shrink-0">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-googl-blue mb-0.5">오늘의 추천 검색어</div>
+              <div class="text-sm font-medium text-gray-800">2026년 인공지능 기술 트렌드</div>
+              <div class="text-xs text-gray-500 mt-1">생성형 AI와 에이전트의 발전 요약</div>
+            </div>
+          </div>
+
+          <div onclick="executePresetSearch('웹 프론트엔드 최신 프레임워크')" class="p-4 border border-gray-200 rounded-2xl bg-white hover:border-emerald-300 hover:bg-emerald-50/40 transition cursor-pointer flex items-start space-x-3">
+            <div class="p-2.5 bg-emerald-100 text-googl-green rounded-xl flex-shrink-0">
+              <i class="fa-solid fa-lightbulb"></i>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-googl-green mb-0.5">아무 질문이나 해보기</div>
+              <div class="text-sm font-medium text-gray-800">웹 프론트엔드 최신 프레임워크</div>
+              <div class="text-xs text-gray-500 mt-1">모던 웹 생태계 비교 및 분석</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shortcuts Bar -->
+        <div class="flex flex-wrap items-center justify-center gap-6">
+          <button onclick="executePresetSearch('유튜브 추천 영상')" class="flex flex-col items-center group">
+            <div class="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center text-xl group-hover:bg-red-100 transition shadow-sm">
+              <i class="fa-brands fa-youtube"></i>
+            </div>
+            <span class="text-xs text-gray-600 mt-2 font-medium">유튜브</span>
+          </button>
+          
+          <button onclick="executePresetSearch('오늘의 날씨 정보')" class="flex flex-col items-center group">
+            <div class="w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-xl group-hover:bg-amber-100 transition shadow-sm">
+              <i class="fa-solid fa-sun"></i>
+            </div>
+            <span class="text-xs text-gray-600 mt-2 font-medium">날씨</span>
+          </button>
+
+          <button onclick="executePresetSearch('IT 테크 뉴스')" class="flex flex-col items-center group">
+            <div class="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl group-hover:bg-blue-100 transition shadow-sm">
+              <i class="fa-solid fa-newspaper"></i>
+            </div>
+            <span class="text-xs text-gray-600 mt-2 font-medium">뉴스</span>
+          </button>
+
+          <button onclick="executePresetSearch('주요 코스피 증시 시세')" class="flex flex-col items-center group">
+            <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl group-hover:bg-emerald-100 transition shadow-sm">
+              <i class="fa-solid fa-chart-line"></i>
+            </div>
+            <span class="text-xs text-gray-600 mt-2 font-medium">증시</span>
+          </button>
+        </div>
+      </main>
+
+      <!-- Home Footer -->
+      <footer class="w-full bg-gray-100 border-t border-gray-200 text-xs text-gray-600">
+        <div class="px-6 py-3 border-b border-gray-200">
+          <span>대한민국</span>
+        </div>
+        <div class="px-6 py-3 flex flex-wrap justify-between items-center gap-4">
+          <div class="flex space-x-6">
+            <button onclick="showToast('서비스 약관 및 정보')" class="hover:underline">개인정보처리방침</button>
+            <button onclick="showToast('약관 정보')" class="hover:underline">약관</button>
+            <button onclick="showToast('검색 설정')" class="hover:underline">설정</button>
+          </div>
+          <div>
+            <span>© 2026 GOOGL Inc. All rights reserved.</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- 2. SEARCH RESULTS VIEW                     -->
+    <!-- ========================================== -->
+    <div id="view-results" class="hidden flex-1 flex flex-col">
+      <!-- Sticky Top Header -->
+      <header class="sticky top-0 bg-white z-40 border-b border-gray-200 shadow-sm">
+        <div class="flex items-center justify-between px-4 sm:px-6 py-3 gap-4">
+          <div class="flex items-center space-x-6 flex-1 max-w-4xl">
+            <!-- Brand Logo (Click home) -->
+            <div class="cursor-pointer select-none text-2xl font-bold tracking-tight flex-shrink-0" onclick="goHome()">
+              <span class="text-googl-blue">G</span><span class="text-googl-red">O</span><span class="text-googl-yellow">O</span><span class="text-googl-blue">G</span><span class="text-googl-green">L</span>
+            </div>
+
+            <!-- Search Input Box -->
+            <div class="relative flex-1 max-w-2xl">
+              <div class="relative flex items-center border border-gray-200 rounded-full hover-shadow custom-shadow bg-white transition focus-within:border-gray-300">
+                <input 
+                  type="text" 
+                  id="results-search-input" 
+                  class="w-full py-2.5 pl-5 pr-20 text-sm sm:text-base rounded-full focus:outline-none bg-transparent text-gray-800"
+                  autocomplete="off"
+                  onkeydown="if(event.key === 'Enter') submitSearch('results')"
+                >
+                <div class="absolute right-3 flex items-center space-x-1.5">
+                  <button id="results-clear-btn" onclick="clearInput('results')" class="p-1 text-gray-400 hover:text-gray-600 rounded-full">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                  </button>
+                  <button onclick="submitSearch('results')" class="p-2 text-googl-blue hover:bg-blue-50 rounded-full transition">
+                    <i class="fa-solid fa-magnifying-glass text-base"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Right User Profile -->
+          <div class="flex items-center space-x-3">
+            <button class="p-2 text-gray-600 hover:bg-gray-100 rounded-full">
+              <i class="fa-solid fa-gear text-lg"></i>
+            </button>
+            <button class="w-8 h-8 rounded-full bg-googl-blue text-white font-bold flex items-center justify-center text-sm shadow">
+              G
+            </button>
+          </div>
+        </div>
+
+        <!-- Category Tabs -->
+        <div class="px-4 sm:px-36 border-t border-gray-100 flex items-center space-x-6 text-sm overflow-x-auto no-scrollbar">
+          <button id="tab-all" onclick="changeCategory('all')" class="py-2.5 px-1 border-b-2 border-googl-blue text-googl-blue font-semibold flex items-center space-x-2 whitespace-nowrap">
+            <i class="fa-solid fa-magnifying-glass text-xs"></i>
+            <span>전체</span>
+          </button>
+          <button id="tab-news" onclick="changeCategory('news')" class="py-2.5 px-1 border-b-2 border-transparent text-gray-600 hover:text-gray-900 font-medium flex items-center space-x-2 whitespace-nowrap">
+            <i class="fa-regular fa-newspaper text-xs"></i>
+            <span>뉴스</span>
+          </button>
+          <button id="tab-academic" onclick="changeCategory('academic')" class="py-2.5 px-1 border-b-2 border-transparent text-gray-600 hover:text-gray-900 font-medium flex items-center space-x-2 whitespace-nowrap">
+            <i class="fa-solid fa-graduation-cap text-xs"></i>
+            <span>학술</span>
+          </button>
+          <button id="tab-community" onclick="changeCategory('community')" class="py-2.5 px-1 border-b-2 border-transparent text-gray-600 hover:text-gray-900 font-medium flex items-center space-x-2 whitespace-nowrap">
+            <i class="fa-regular fa-comments text-xs"></i>
+            <span>커뮤니티</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Results Content Body -->
+      <main class="flex-1 bg-white px-4 sm:px-36 py-4 max-w-6xl">
+        <!-- Search Statistics Counter -->
+        <div class="text-xs text-gray-500 mb-4" id="search-stats">
+          검색결과 약 1,240,000개 (0.28초)
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <!-- Left Main Results Column -->
+          <div class="lg:col-span-8 space-y-6 min-w-0">
+
+            <div id="query-fix" class="hidden -mt-2 text-sm text-gray-600"></div>
+
+            <!-- Featured Snippet -->
+            <div id="featured-card" class="hidden border border-gray-200 rounded-2xl p-5 bg-white min-w-0"></div>
+
+            <!-- Search Results Container -->
+            <div id="results-list" class="space-y-6">
+              <!-- JS Populated Result Cards -->
+            </div>
+
+            <!-- People Also Ask (PAA) Section -->
+            <div id="paa-section" class="border border-gray-200 rounded-2xl p-5 my-6 bg-gray-50/50">
+              <h3 class="text-base font-bold text-gray-900 mb-3 flex items-center space-x-2">
+                <i class="fa-solid fa-circle-question text-googl-blue"></i>
+                <span>다른 사람들이 함께 찾은 질문</span>
+              </h3>
+              <div id="paa-list" class="divide-y divide-gray-200">
+                <!-- JS Accordion List -->
+              </div>
+            </div>
+
+            <!-- Related Searches Keywords -->
+            <div id="related-wrap" class="py-4">
+              <h3 class="text-sm font-bold text-gray-800 mb-3">연관 검색어</h3>
+              <div id="related-queries-grid" class="flex flex-wrap gap-2">
+                <!-- JS Populated Related Keyword Pills -->
+              </div>
+            </div>
+
+            <!-- GOOOOGL Custom Pagination -->
+            <div id="pagination-wrap" class="py-8 flex flex-col items-center justify-center">
+              <div class="flex items-center space-x-1 text-3xl font-black select-none tracking-tight mb-2">
+                <span class="text-googl-blue">G</span>
+                <span class="text-googl-red">o</span>
+                <span class="text-googl-yellow">o</span>
+                <span class="text-googl-yellow">o</span>
+                <span class="text-googl-yellow">o</span>
+                <span class="text-googl-blue">g</span>
+                <span class="text-googl-green">l</span>
+              </div>
+              <div id="pagination-list" class="flex items-center space-x-2 text-sm font-medium text-gray-600">
+                <!-- JS Pages -->
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right Knowledge Sidebar Panel -->
+          <div class="lg:col-span-4 space-y-4">
+            <div id="knowledge-card" class="border border-gray-200 rounded-2xl p-5 bg-white shadow-sm">
+              <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">지식 스니펫</div>
+              <h2 id="knowledge-title" class="text-xl font-bold text-gray-900 mb-2">검색어 정보</h2>
+              <p id="knowledge-desc" class="text-xs text-gray-600 leading-relaxed mb-4">
+                해당 주제에 대한 요약 및 검증된 핵심 데이터입니다.
+              </p>
+              <div id="knowledge-facts" class="space-y-2 text-xs border-t border-gray-100 pt-3">
+                <!-- JS Populated Facts -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- 3. ARTICLE READER VIEW                     -->
+    <!-- ========================================== -->
+    <div id="view-reader" class="hidden flex-1 flex flex-col bg-slate-50 min-h-screen">
+      <!-- Article Header Toolbar -->
+      <header class="sticky top-0 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between z-30 shadow-sm">
+        <button onclick="backToResults()" class="flex items-center space-x-2 text-sm font-semibold text-gray-700 hover:text-googl-blue bg-gray-100 hover:bg-blue-50 px-3.5 py-2 rounded-xl transition">
+          <i class="fa-solid fa-arrow-left"></i>
+          <span>검색결과로 돌아가기</span>
+        </button>
+
+        <div class="flex items-center space-x-2 bg-gray-100 text-gray-600 px-4 py-1.5 rounded-full text-xs font-mono max-w-md truncate border border-gray-200">
+          <i class="fa-solid fa-lock text-green-600"></i>
+          <span id="reader-url-bar">https://example.com/article</span>
+        </div>
+
+        <div class="flex items-center space-x-3">
+          <button onclick="copyArticleLink()" class="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition" title="링크 복사">
+            <i class="fa-regular fa-copy text-base"></i>
+          </button>
+          <button onclick="showToast('북마크에 저장되었습니다.')" class="p-2 text-gray-600 hover:bg-gray-100 rounded-full transition" title="북마크">
+            <i class="fa-regular fa-bookmark text-base"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Reader Article Container -->
+      <main class="flex-1 max-w-3xl w-full mx-auto my-8 px-6">
+        <article class="bg-white rounded-2xl border border-gray-200 p-8 sm:p-12 shadow-sm">
+          <!-- Article Meta -->
+          <div class="flex items-center space-x-3 mb-6">
+            <span id="reader-site-badge" class="bg-blue-100 text-googl-blue text-xs font-bold px-3 py-1 rounded-full">
+              기술 아티클
+            </span>
+            <span id="reader-date" class="text-xs text-gray-400">2026.10.26</span>
+            <span class="text-xs text-gray-300">•</span>
+            <span id="reader-reading-time" class="text-xs text-gray-500">읽는 시간 3분</span>
+          </div>
+
+          <!-- Article Title -->
+          <h1 id="reader-title" class="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight mb-4">
+            아티클 제목이 표시됩니다
+          </h1>
+
+          <!-- Publisher Info -->
+          <div class="flex items-center space-x-3 pb-6 mb-6 border-b border-gray-100">
+            <div id="reader-avatar" class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-600">
+              G
+            </div>
+            <div>
+              <div id="reader-publisher" class="text-sm font-semibold text-gray-800">게시자 정보</div>
+              <div id="reader-domain" class="text-xs text-gray-500">domain.com</div>
+            </div>
+          </div>
+
+          <!-- Article Body -->
+          <div id="reader-body" class="prose prose-slate max-w-none text-gray-700 leading-relaxed space-y-4 text-base">
+            <!-- JS Populated Body -->
+          </div>
+        </article>
+      </main>
+    </div>
+
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT APP LOGIC                       -->
+  <!-- ========================================== -->
+  <script>
+    // ===== App State =====
+    const state = {
+      currentView: 'home',
+      currentQuery: '',
+      currentCategory: 'all',
+      currentPage: 1,
+      searchHistory: ['2026년 인공지능 기술 트렌드', '리액트 19 변경사항', '양자 컴퓨팅 원리', '서울 날씨'],
+      aiMoreExpanded: false,
+      currentArticleData: null,
+      currentData: null,
+      currentResultDataset: [],
+      searchCtl: null,
+      articleCtl: null,
+      searchSeq: 0,
+      fallbackNoticeShown: false
+    };
+
+    // AI(Claude) 연결: 뷰어 밖이면 null
+    const samplePromise = (window.claude && typeof window.claude.use === 'function')
+      ? window.claude.use('sample').catch(() => null)
+      : Promise.resolve(null);
+    let aiBlocked = false; // 사용 거부 등으로 이번 화면에서 AI를 못 쓰는 경우
+    async function getSample() {
+      if (aiBlocked) return null;
+      try { return await samplePromise; } catch { return null; }
+    }
+
+
+    // ===== Helpers =====
+    function esc(str) {
+      return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    // 이스케이프 후 **굵게**만 허용
+    function richText(str) {
+      return esc(str).replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>');
+    }
+    function escapeRegExp(string) {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    // html(이미 이스케이프된 문자열)의 태그 밖 텍스트에서만 검색어 강조
+    function highlightKeywords(html, query) {
+      if (!query || !html) return html || '';
+      const words = query.trim().split(/\s+/).filter(w => w.length > 1).map(w => escapeRegExp(esc(w)));
+      if (!words.length) return html;
+      const re = new RegExp(`(${words.join('|')})`, 'gi');
+      return html.split(/(<[^>]+>)/).map(part => part.startsWith('<') ? part : part.replace(re, '<strong class="font-semibold text-gray-900">$1</strong>')).join('');
+    }
+    function todayStr() {
+      const d = new Date();
+      return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+    }
+    const CATEGORY_LABEL = { all: '웹문서', news: '뉴스', academic: '학술', community: '커뮤니티' };
+
+    // ===== Views =====
+    function switchView(viewName) {
+      state.currentView = viewName;
+      ['home', 'results', 'reader'].forEach(v => document.getElementById(`view-${v}`).classList.add('hidden'));
+      document.getElementById(`view-${viewName}`).classList.remove('hidden');
+      if (viewName === 'home') document.title = 'GOOGL 검색';
+      else if (viewName === 'results') document.title = `${state.currentQuery} - GOOGL 검색`;
+      else document.title = `${state.currentArticleData?.title || '아티클'} - GOOGL 리더`;
+      window.scrollTo(0, 0);
+    }
+
+    function goHome() {
+      state.searchCtl?.abort();
+      state.articleCtl?.abort();
+      state.currentQuery = '';
+      document.getElementById('home-search-input').value = '';
+      document.getElementById('results-search-input').value = '';
+      switchView('home');
+    }
+
+    function clearInput(source) {
+      const input = document.getElementById(`${source}-search-input`);
+      input.value = '';
+      document.getElementById(`${source}-clear-btn`).classList.add('hidden');
+      input.focus();
+    }
+
+    ['home', 'results'].forEach(src => {
+      document.getElementById(`${src}-search-input`).addEventListener('input', (e) => {
+        document.getElementById(`${src}-clear-btn`).classList.toggle('hidden', !e.target.value);
+      });
+    });
+
+    // ===== History dropdown =====
+    function showHistoryDropdown() {
+      const dropdown = document.getElementById('home-history-dropdown');
+      const list = document.getElementById('home-history-list');
+      if (!state.searchHistory.length) { dropdown.classList.add('hidden'); return; }
+      list.innerHTML = state.searchHistory.map(q => `
+        <div data-q="${esc(q)}" class="history-item px-4 py-2.5 hover:bg-gray-50 flex items-center justify-between cursor-pointer text-sm text-gray-700">
+          <div class="flex items-center space-x-3 min-w-0">
+            <i class="fa-regular fa-clock text-gray-400"></i>
+            <span class="truncate">${esc(q)}</span>
+          </div>
+          <span data-remove="${esc(q)}" class="text-xs text-gray-400 hover:text-red-500 p-1">삭제</span>
+        </div>
+      `).join('');
+      dropdown.classList.remove('hidden');
+    }
+
+    document.getElementById('home-history-list').addEventListener('click', (e) => {
+      const rm = e.target.closest('[data-remove]');
+      if (rm) {
+        e.stopPropagation();
+        state.searchHistory = state.searchHistory.filter(item => item !== rm.dataset.remove);
+        showHistoryDropdown();
+        return;
+      }
+      const item = e.target.closest('[data-q]');
+      if (item) executePresetSearch(item.dataset.q);
+    });
+
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('home-history-dropdown');
+      const input = document.getElementById('home-search-input');
+      if (dropdown && !dropdown.contains(e.target) && e.target !== input) dropdown.classList.add('hidden');
+    });
+
+    // ===== Search =====
+    function submitSearch(source) {
+      const query = document.getElementById(`${source}-search-input`).value.trim();
+      document.getElementById('home-history-dropdown').classList.add('hidden');
+      if (!query) return;
+
+      state.searchHistory = [query, ...state.searchHistory.filter(q => q !== query)].slice(0, 6);
+      state.currentQuery = query;
+      state.currentPage = 1;
+      document.getElementById('home-search-input').value = query;
+      document.getElementById('results-search-input').value = query;
+
+      switchView('results');
+      startSearch();
+    }
+
+    function executePresetSearch(query) {
+      document.getElementById('home-search-input').value = query;
+      document.getElementById('results-search-input').value = query;
+      submitSearch('home');
+    }
+
+    function quickCategorySearch(catName) {
+      executePresetSearch(catName === '뉴스' ? '오늘의 주요 헤드라인 뉴스' : '인공지능 최신 학술 논문');
+    }
+
+    function changeCategory(category) {
+      state.currentCategory = category;
+      ['all', 'news', 'academic', 'community'].forEach(tab => {
+        const btn = document.getElementById(`tab-${tab}`);
+        btn.className = tab === category
+          ? 'py-2.5 px-1 border-b-2 border-googl-blue text-googl-blue font-semibold flex items-center space-x-2 whitespace-nowrap'
+          : 'py-2.5 px-1 border-b-2 border-transparent text-gray-600 hover:text-gray-900 font-medium flex items-center space-x-2 whitespace-nowrap';
+      });
+      if (state.currentData) renderResultsList();
+    }
+
+    function buildSearchPrompt(query, page) {
+      return `검색엔진 "GOOGL"의 검색 결과 데이터를 출력해.
+검색어: "${query}"
+페이지: ${page}${page > 1 ? ' (1페이지와 겹치지 않는 다른 하위 주제·관점의 결과)' : ''}
+
+검색어에 오타·초성·구어체·잡담이 섞여 있어도 실제 검색엔진처럼 사용자가 찾으려는 주제를 알아내서 그 주제의 결과를 보여줘.
+
+한 줄에 JSON 객체 하나씩, 다른 글자 없이 아래 순서대로 출력해.
+0) 검색어 교정 1줄(검색어가 이미 깔끔하면 생략): {"t":"fix","q":"정리된 검색어"}
+1) 검색 결과 7줄: {"t":"r","site":"사이트 이름","url":"https://...","title":"페이지 제목","snippet":"본문에서 발췌한 듯한 1~2문장","cat":"all|news|academic|community"}
+   cat 분포: all 2, news 2, academic 1~2, community 1~2
+2) 추천 스니펫 1줄: {"t":"s","text":"검색어에 대한 2~3문장 설명","src":이 내용을 담은 결과의 번호(0부터)}
+3) 지식 패널 1줄: {"t":"k","title":"주제 이름","desc":"한 문장 정의","facts":[["항목","값"],["항목","값"],["항목","값"]]}
+4) 관련 질문 3줄: {"t":"q","q":"질문","a":"2문장 답"}
+5) 연관 검색어 1줄: {"t":"rel","list":["검색어","검색어","검색어","검색어","검색어"]}
+
+문체 규칙 (중요):
+- 모든 글은 실제 웹페이지·백과사전·기사에서 그대로 따온 문장처럼 써. 건조한 설명문, "~이다/~입니다" 서술형.
+- 사용자에게 말을 거는 말투, 조언·권유("~하세요", "~해야 합니다"), "다만", 요약하는 말투는 쓰지 마.
+- 스니펫 제목은 실제 블로그·기사·논문·게시글 제목 스타일로.
+- 사실에 근거하고, 확실하지 않은 수치·날짜는 쓰지 마.
+- 사이트 이름과 도메인은 실존하는 곳 말고 그럴듯한 가상의 이름으로.`;
+    }
+
+    // ----- 로딩 / 섹션별 렌더 -----
+    function showLoading() {
+      document.getElementById('search-stats').textContent = '';
+      const fc = document.getElementById('featured-card');
+      fc.classList.remove('hidden');
+      fc.innerHTML = `<div class="animate-pulse space-y-2"><div class="h-3.5 bg-gray-100 rounded w-full"></div><div class="h-3.5 bg-gray-100 rounded w-11/12"></div><div class="h-3.5 bg-gray-100 rounded w-1/2"></div></div>`;
+      document.getElementById('results-list').innerHTML = Array.from({ length: 4 }).map(() => `
+        <div class="animate-pulse space-y-2">
+          <div class="h-3 bg-gray-100 rounded w-1/3"></div>
+          <div class="h-5 bg-gray-200 rounded w-3/4"></div>
+          <div class="h-3 bg-gray-100 rounded w-full"></div>
+        </div>`).join('');
+      document.getElementById('paa-section').classList.add('hidden');
+      document.getElementById('related-wrap').classList.add('hidden');
+      document.getElementById('pagination-wrap').classList.add('hidden');
+      document.getElementById('knowledge-card').classList.remove('hidden');
+      document.getElementById('knowledge-title').textContent = state.currentQuery;
+      document.getElementById('knowledge-desc').innerHTML = '<span class="inline-block h-3 w-40 bg-gray-100 rounded animate-pulse"></span>';
+      document.getElementById('knowledge-facts').innerHTML = '';
+    }
+
+    function renderFeatured() {
+      const d = state.currentData;
+      const fc = document.getElementById('featured-card');
+      if (!d.featured) return;
+      const src = d.results[d.featured.src] || d.results[0];
+      const srcIdx = src ? d.results.indexOf(src) : -1;
+      fc.innerHTML = `
+        <div class="text-[15px] text-gray-800 leading-relaxed">${highlightKeywords(richText(d.featured.text), state.currentQuery)}</div>
+        ${src ? `
+        <div class="mt-4 pt-3 border-t border-gray-100 min-w-0">
+          <div class="flex items-center space-x-2 text-xs text-gray-600 mb-0.5 min-w-0">
+            <span class="font-semibold text-gray-800 whitespace-nowrap">${esc(src.siteName)}</span>
+            <span class="text-gray-300">•</span>
+            <span class="text-gray-500 truncate">${esc(src.url)}</span>
+          </div>
+          <button data-open="${srcIdx}" class="text-left text-base text-blue-800 hover:underline">${esc(src.title)}</button>
+        </div>` : ''}
+        <div class="mt-3 flex justify-end items-center space-x-3 text-xs text-gray-400">
+          <span>추천 스니펫 정보</span>
+          <button onclick="showToast('의견이 전송되었습니다.')" class="hover:text-gray-600" aria-label="의견 보내기"><i class="fa-regular fa-flag"></i></button>
+        </div>`;
+    }
+
+    document.getElementById('featured-card').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-open]');
+      if (!b) return;
+      const item = state.currentData.results[Number(b.dataset.open)];
+      if (item) openReaderItem(item);
+    });
+
+    function renderKnowledge() {
+      const k = state.currentData.knowledge;
+      if (!k) return;
+      document.getElementById('knowledge-title').textContent = k.title || state.currentQuery;
+      document.getElementById('knowledge-desc').textContent = k.desc || '';
+      document.getElementById('knowledge-facts').innerHTML = (k.facts || []).map(f => `
+        <div class="flex justify-between gap-3 border-b border-gray-50 pb-1.5">
+          <span class="text-gray-500 font-medium flex-shrink-0">${esc(f.label)}</span>
+          <span class="text-gray-800 font-semibold text-right">${esc(f.val)}</span>
+        </div>`).join('');
+    }
+
+    function renderPaa() {
+      const paa = state.currentData.paa;
+      document.getElementById('paa-section').classList.toggle('hidden', !paa.length);
+      document.getElementById('paa-list').innerHTML = paa.map((item, idx) => `
+        <div class="py-3">
+          <button onclick="togglePaa(${idx})" class="w-full flex justify-between items-center gap-3 text-left text-sm font-medium text-gray-800 hover:text-googl-blue transition">
+            <span>${esc(item.q)}</span>
+            <span id="paa-icon-${idx}" class="inline-block transition-transform text-gray-400"><i class="fa-solid fa-chevron-down text-xs"></i></span>
+          </button>
+          <div id="paa-ans-${idx}" class="hidden mt-2.5 text-xs sm:text-sm text-gray-600 leading-relaxed bg-white p-3.5 rounded-xl border border-gray-100">${esc(item.a)}</div>
+        </div>`).join('');
+    }
+
+    function renderRelated() {
+      const rel = state.currentData.related;
+      document.getElementById('related-wrap').classList.toggle('hidden', !rel.length);
+      document.getElementById('related-queries-grid').innerHTML = rel.map(r => `
+        <button data-q="${esc(r)}" class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 rounded-full text-xs font-medium text-gray-700 transition flex items-center space-x-2">
+          <i class="fa-solid fa-magnifying-glass text-gray-400 text-xs"></i>
+          <span>${esc(r)}</span>
+        </button>`).join('');
+    }
+
+    function finishRender(firstMs) {
+      const d = state.currentData;
+      if (!d.featured) document.getElementById('featured-card').classList.add('hidden');
+      if (!d.knowledge) document.getElementById('knowledge-card').classList.add('hidden');
+      document.getElementById('pagination-wrap').classList.remove('hidden');
+      renderPagination();
+      const count = Math.floor(Math.random() * 800000 + 400000).toLocaleString();
+      document.getElementById('search-stats').textContent = `검색결과 약 ${count}개 (${(firstMs / 1000).toFixed(2)}초)`;
+    }
+
+    const CAT_SET = ['all', 'news', 'academic', 'community'];
+
+    // 응답 텍스트에서 완성된 최상위 JSON 객체를 차례로 꺼냄 (줄바꿈·코드펜스·배열 형태 모두 허용)
+    function extractObjects(text, from) {
+      const objs = [];
+      let depth = 0, start = -1, inStr = false, escp = false, next = from;
+      for (let i = from; i < text.length; i++) {
+        const c = text[i];
+        if (inStr) {
+          if (escp) escp = false;
+          else if (c === '\\') escp = true;
+          else if (c === '"') inStr = false;
+          continue;
+        }
+        if (c === '"') { if (depth > 0) inStr = true; continue; }
+        if (c === '{') { if (depth === 0) start = i; depth++; }
+        else if (c === '}' && depth > 0) {
+          depth--;
+          if (depth === 0) { objs.push(text.slice(start, i + 1)); next = i + 1; }
+        }
+      }
+      return { objs, next };
+    }
+
+    function addResult(o) {
+      const title = o.title || o.name;
+      if (!title) return false;
+      const url = String(o.url || o.link || '');
+      state.currentData.results.push({
+        siteName: String(o.site || o.siteName || o.source || '웹문서'),
+        url: /^https?:\/\//.test(url) ? url : `https://${url.replace(/^\/+/, '') || 'web.kr'}`,
+        title: String(title),
+        snippet: String(o.snippet || o.desc || ''),
+        category: CAT_SET.includes(o.cat) ? o.cat : (CAT_SET.includes(o.category) ? o.category : 'all')
+      });
+      renderResultsList();
+      return true;
+    }
+
+    function applyObject(o) {
+      if (!o || typeof o !== 'object') return false;
+      const d = state.currentData;
+      const t = o.t || o.type;
+      // 한 덩어리 객체로 답한 경우도 처리
+      if (!t && Array.isArray(o.results)) {
+        let any = false;
+        o.results.forEach(r => { any = addResult(r) || any; });
+        return any ? 'r' : false;
+      }
+      if (t === 'r' || (!t && o.url && o.title)) return addResult(o) ? 'r' : false;
+      if (t === 'fix' && o.q) { d.fixed = String(o.q); renderFix(); }
+      else if (t === 's' && o.text) { d.featured = { text: String(o.text), src: Number(o.src) || 0 }; renderFeatured(); }
+      else if (t === 'k') {
+        d.knowledge = { title: String(o.title || ''), desc: String(o.desc || ''), facts: (Array.isArray(o.facts) ? o.facts : []).map(f => Array.isArray(f) ? f : [f?.label, f?.val]).filter(f => f[0]).map(f => ({ label: String(f[0]), val: String(f[1] ?? '') })) };
+        renderKnowledge();
+      }
+      else if (t === 'q' && o.q) { d.paa.push({ q: String(o.q), a: String(o.a || '') }); renderPaa(); }
+      else if (t === 'rel' && Array.isArray(o.list)) { d.related = o.list.map(String).filter(Boolean); renderRelated(); }
+      return true;
+    }
+
+    function renderFix() {
+      const el = document.getElementById('query-fix');
+      const f = state.currentData.fixed;
+      if (!f || f === state.currentQuery) { el.classList.add('hidden'); return; }
+      el.innerHTML = `다음에 대한 검색결과 표시: <button data-q="${esc(f)}" class="text-blue-800 font-semibold italic hover:underline">${esc(f)}</button>`;
+      el.classList.remove('hidden');
+    }
+    document.getElementById('query-fix').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-q]');
+      if (b) executePresetSearch(b.dataset.q);
+    });
+
+    function showSearchError(msg) {
+      document.getElementById('featured-card').classList.add('hidden');
+      document.getElementById('knowledge-card').classList.add('hidden');
+      document.getElementById('search-stats').textContent = '';
+      document.getElementById('results-list').innerHTML = `
+        <div class="py-6 text-sm text-gray-700 space-y-3">
+          <p>${esc(msg)}</p>
+          <button id="search-retry" class="px-4 py-2 rounded-full border border-gray-300 text-googl-blue font-semibold hover:bg-blue-50">다시 시도</button>
+        </div>`;
+      document.getElementById('search-retry').onclick = () => startSearch();
+    }
+
+    async function startSearch() {
+      state.searchCtl?.abort();
+      const ctl = new AbortController();
+      state.searchCtl = ctl;
+      const seq = ++state.searchSeq;
+      const query = state.currentQuery;
+      const page = state.currentPage;
+      const t0 = performance.now();
+      let firstMs = null;
+      state.currentData = { results: [], featured: null, knowledge: null, paa: [], related: [], fixed: null };
+      document.getElementById('query-fix').classList.add('hidden');
+      showLoading();
+
+      const sample = await getSample();
+      if (seq !== state.searchSeq) return;
+      if (!sample) { showSearchError('검색 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.'); return; }
+
+      let pos = 0;
+      const consume = (text) => {
+        if (seq !== state.searchSeq) return;
+        const { objs, next } = extractObjects(text, pos);
+        pos = next;
+        for (const s of objs) {
+          let o; try { o = JSON.parse(s); } catch { continue; }
+          if (applyObject(o) === 'r' && firstMs === null) {
+            firstMs = performance.now() - t0;
+            const count = Math.floor(Math.random() * 800000 + 400000).toLocaleString();
+            document.getElementById('search-stats').textContent = `검색결과 약 ${count}개 (${(firstMs / 1000).toFixed(2)}초)`;
+          }
+        }
+      };
+
+      let errCode = null;
+      try {
+        const { text } = await sample(buildSearchPrompt(query, page), {
+          modelTier: 'quick',
+          signal: ctl.signal,
+          cache: { gcTime: 30 * 60 * 1000 },
+          onText: ({ text }) => consume(text)
+        });
+        consume(text);
+      } catch (e) {
+        if (e?.code === 'cancelled' || seq !== state.searchSeq) return;
+        if (e?.text) consume(e.text);
+        errCode = e?.code || 'upstream_error';
+        if (['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'].includes(errCode)) aiBlocked = true;
+      }
+      if (seq !== state.searchSeq) return;
+      if (!state.currentData.results.length) {
+        showSearchError(
+          aiBlocked ? '검색 서비스를 사용할 수 없습니다. 페이지를 새로고침한 뒤 허용을 눌러 주세요.'
+          : errCode === 'rate_limited' ? '요청이 너무 많습니다. 잠시 후 다시 검색해 주세요.'
+          : `'${query}'에 대한 검색결과를 불러오지 못했습니다.`
+        );
+        return;
+      }
+      finishRender(firstMs ?? (performance.now() - t0));
+    }
+
+    document.getElementById('related-queries-grid').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-q]');
+      if (btn) executePresetSearch(btn.dataset.q);
+    });
+
+    function renderResultsList() {
+      const data = state.currentData;
+      let list = data.results;
+      if (state.currentCategory !== 'all') {
+        list = data.results.filter(r => r.category === state.currentCategory);
+        if (!list.length) list = data.results;
+      }
+      state.currentResultDataset = list;
+      document.getElementById('results-list').innerHTML = list.map((item, idx) => `
+        <div class="group min-w-0">
+          <div class="flex items-center space-x-2 text-xs text-gray-600 mb-1 min-w-0">
+            <div class="w-5 h-5 rounded-full bg-slate-100 flex-shrink-0 flex items-center justify-center text-slate-500 font-bold text-[10px] border border-gray-200">${esc(item.siteName.charAt(0))}</div>
+            <span class="font-semibold text-gray-800 whitespace-nowrap">${esc(item.siteName)}</span>
+            <span class="text-gray-300">•</span>
+            <span class="text-gray-500 truncate">${esc(item.url)}</span>
+          </div>
+          <h3 onclick="openReaderMode(${idx})" class="text-lg sm:text-xl font-medium text-blue-800 group-hover:underline cursor-pointer leading-snug mb-1">${esc(item.title)}</h3>
+          <p class="text-xs sm:text-sm text-gray-600 leading-relaxed line-clamp-2">
+            ${highlightKeywords(esc(item.snippet), state.currentQuery)}
+          </p>
+        </div>`).join('');
+    }
+
+    function togglePaa(idx) {
+      const ans = document.getElementById(`paa-ans-${idx}`);
+      const icon = document.getElementById(`paa-icon-${idx}`);
+      const open = ans.classList.contains('hidden');
+      ans.classList.toggle('hidden', !open);
+      icon.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+
+    function renderPagination() {
+      const cur = state.currentPage;
+      const start = Math.max(1, cur - 2);
+      const pages = Array.from({ length: 5 }, (_, i) => start + i);
+      document.getElementById('pagination-list').innerHTML =
+        (cur > 1 ? `<button onclick="goToPage(${cur - 1})" class="pr-2 text-googl-blue hover:underline text-xs font-semibold">이전</button>` : '') +
+        pages.map(p => `
+          <button onclick="goToPage(${p})" class="w-8 h-8 rounded-full flex items-center justify-center transition ${p === cur ? 'bg-googl-blue text-white font-bold' : 'hover:bg-gray-100 text-gray-700'}">${p}</button>`).join('') +
+        `<button onclick="goToPage(${cur + 1})" class="pl-2 text-googl-blue hover:underline text-xs font-semibold flex items-center space-x-1"><span>다음</span><i class="fa-solid fa-chevron-right text-xs"></i></button>`;
+    }
+
+    function goToPage(p) {
+      if (p === state.currentPage) return;
+      state.currentPage = p;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      startSearch();
+    }
+
+    // ===== Reader (AI가 글을 작성) =====
+    function buildArticlePrompt(item, query) {
+      const style = {
+        news: '뉴스 기사체(기자가 쓴 기사처럼, 리드 문단으로 시작)',
+        academic: '학술 문서체(초록 → 서론 → 본론 → 결론 흐름, 객관적 서술)',
+        community: '커뮤니티 게시글 말투(글쓴이가 경험을 공유하듯 친근하게, 존댓말)',
+        all: '정보성 블로그·가이드 문체(읽기 쉽게 설명)'
+      }[item.category] || '정보성 문체';
+      return `검색엔진에서 "${query}"를 검색하면 나오는 아래 웹페이지의 본문을 실제로 작성해줘.
+
+사이트: ${item.siteName}
+분류: ${CATEGORY_LABEL[item.category] || '웹문서'}
+제목: ${item.title}
+검색 결과 요약: ${item.snippet}
+
+조건:
+- 문체: ${style}
+- 한국어 600~1000자 분량, 제목과 요약에 맞는 내용으로. 실제 그 사이트에 올라와 있는 글 그대로처럼.
+- 독자에게 말을 거는 AI 답변 말투, 요약·정리하는 말투, "도움이 되셨길" 같은 말은 쓰지 마.
+- 네가 아는 사실에 근거해서 쓰고, 확실하지 않은 수치·날짜·실존 인물의 발언은 지어내지 마.
+- 형식: 문단 사이는 빈 줄 하나. 소제목이 필요하면 그 줄 맨 앞에 "## ". 강조는 **굵게**만 사용. 그 밖의 마크다운 기호, 제목 반복, 맺음 인사는 쓰지 마.`;
+    }
+
+    function renderArticleText(text) {
+      return text.split(/\n\s*\n/).map(block => block.trim()).filter(Boolean).map(block => {
+        if (/^#{1,6}\s/.test(block)) {
+          return `<h2 class="text-lg sm:text-xl font-bold text-gray-900 pt-2">${esc(block.replace(/^#{1,6}\s+/, ''))}</h2>`;
+        }
+        const lines = block.split('\n').map(l => l.trim());
+        if (lines.every(l => /^[-•*]\s+/.test(l))) {
+          return `<ul class="list-disc pl-5 space-y-1 text-gray-700 text-base sm:text-lg">${lines.map(l => `<li>${richText(l.replace(/^[-•*]\s+/, ''))}</li>`).join('')}</ul>`;
+        }
+        return `<p class="text-gray-700 leading-relaxed text-base sm:text-lg">${lines.map(richText).join('<br>')}</p>`;
+      }).join('');
+    }
+
+    function readerFooter(item) {
+      return `
+        <div class="mt-10 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
+          <span>출처: ${esc(item.siteName)} · <span class="break-all">${esc(item.url)}</span></span>
+          <span>GOOGL 리더 · 자동 생성 문서</span>
+        </div>`;
+    }
+
+    function setReadingTime(text) {
+      const mins = Math.max(1, Math.round(text.replace(/\s/g, '').length / 500));
+      document.getElementById('reader-reading-time').textContent = `읽는 시간 ${mins}분`;
+    }
+
+    function openReaderMode(itemIndex) {
+      const item = state.currentResultDataset[itemIndex];
+      if (item) openReaderItem(item);
+    }
+
+    async function openReaderItem(item) {
+      state.currentArticleData = item;
+      state.articleCtl?.abort();
+
+      document.getElementById('reader-url-bar').textContent = item.url;
+      document.getElementById('reader-site-badge').textContent = item.siteName;
+      document.getElementById('reader-title').textContent = item.title;
+      document.getElementById('reader-publisher').textContent = item.siteName;
+      document.getElementById('reader-domain').textContent = item.url.split('/')[2] || item.url;
+      document.getElementById('reader-avatar').textContent = item.siteName.charAt(0);
+      document.getElementById('reader-date').textContent = todayStr();
+      const bodyEl = document.getElementById('reader-body');
+      switchView('reader');
+
+      // 이미 작성된 글이 있으면 바로 보여줌
+      if (item._article) {
+        bodyEl.innerHTML = renderArticleText(item._article) + readerFooter(item);
+        setReadingTime(item._article);
+        return;
+      }
+
+      const showStatic = () => {
+        bodyEl.innerHTML = `<p class="text-gray-600">페이지를 불러올 수 없습니다.</p>` + readerFooter(item);
+      };
+
+      const sample = await getSample();
+      if (!sample || state.currentArticleData !== item) { if (!sample) showStatic(); return; }
+
+      const ctl = new AbortController();
+      state.articleCtl = ctl;
+      document.getElementById('reader-reading-time').textContent = '읽는 시간 —';
+      bodyEl.innerHTML = `
+        <div class="flex items-center gap-2 text-sm text-gray-500 mb-4"><i class="fa-solid fa-spinner fa-spin text-googl-blue"></i><span>페이지 불러오는 중…</span></div>
+        <div class="space-y-3 animate-pulse">
+          <div class="h-4 bg-gray-100 rounded w-full"></div><div class="h-4 bg-gray-100 rounded w-11/12"></div>
+          <div class="h-4 bg-gray-100 rounded w-full"></div><div class="h-4 bg-gray-100 rounded w-2/3"></div>
+        </div>`;
+
+      try {
+        const { text, truncated } = await sample(buildArticlePrompt(item, state.currentQuery), {
+          modelTier: 'quick',
+          signal: ctl.signal,
+          cache: { gcTime: 60 * 60 * 1000 },
+          onText: ({ text }) => {
+            if (state.currentArticleData !== item) return;
+            bodyEl.innerHTML = renderArticleText(text) + '<p class="text-gray-300 text-sm"><i class="fa-solid fa-ellipsis fa-fade"></i></p>';
+          }
+        });
+        item._article = text;
+        if (state.currentArticleData !== item) return;
+        bodyEl.innerHTML = renderArticleText(text) +
+          (truncated ? '<p class="text-xs text-gray-400">글이 길어서 중간에 끊겼어요.</p>' : '') +
+          readerFooter(item);
+        setReadingTime(text);
+      } catch (e) {
+        if (e?.code === 'cancelled' || state.currentArticleData !== item) return;
+        if (['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'].includes(e?.code)) {
+          aiBlocked = true;
+          showStatic();
+          return;
+        }
+        const partial = e?.code === 'refused' ? '' : (e?.text || '');
+        const msg = e?.code === 'rate_limited' ? '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.' : '페이지를 불러오지 못했습니다.';
+        bodyEl.innerHTML = (partial ? renderArticleText(partial) : '') + `
+          <div class="mt-4 p-4 rounded-xl bg-red-50 text-red-700 text-sm flex items-center justify-between gap-3">
+            <span>${msg}</span>
+            <button id="reader-retry" class="px-3 py-1.5 rounded-lg bg-white border border-red-200 font-semibold hover:bg-red-100">다시 불러오기</button>
+          </div>`;
+        document.getElementById('reader-retry').onclick = () => openReaderItem(item);
+      }
+    }
+
+    function backToResults() {
+      state.articleCtl?.abort();
+      switchView('results');
+    }
+
+    function copyArticleLink() {
+      const url = state.currentArticleData?.url || window.location.href;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => showToast('아티클 주소가 클립보드에 복사되었습니다.')).catch(() => fallbackCopyText(url));
+      } else {
+        fallbackCopyText(url);
+      }
+    }
+
+    function fallbackCopyText(text) {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try { document.execCommand('copy'); showToast('아티클 주소가 복사되었습니다.'); }
+      catch { showToast('복사 기능이 지원되지 않는 환경입니다.'); }
+      document.body.removeChild(textArea);
+    }
+
+    function simulateVoiceSearch() {
+      showToast('음성을 듣고 있습니다... "2026년 인공지능"');
+      setTimeout(() => executePresetSearch('2026년 인공지능 기술 트렌드'), 1800);
+    }
+
+    let toastTimer;
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-message').textContent = message;
+      toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+      }, 3000);
+    }
+
+    function handleNavClick(name) {
+      if (name === 'about') showToast('GOOGL은 차세대 지능형 웹 검색엔진 프로젝트입니다.');
+      if (name === 'store') showToast('GOOGL 개발자 스토어가 곧 오픈됩니다.');
+    }
+
+    switchView('home');
+  </script>
+
+</div>
+</body>
+</html>
